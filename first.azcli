@@ -1,0 +1,308 @@
+az upgrade
+
+az login
+
+az account show
+
+az sshkey list 
+
+az vm list-sizes --location germanywestcentral --output table
+
+az logout
+
+# --- create a resourcegroup with location
+# create Bash shell variables
+resourceGroup=VMTutorialResources
+location=germanywestcentral
+
+az group create --name $resourceGroup --location $location
+
+
+# --- create a virtual network plus subnet, before create a resourcegroup with location if not yet done
+# create Bash shell variables
+vnetName=TutorialVNet1
+subnetName=TutorialSubnet1
+vnetAddressPrefix=10.0.0.0/16
+subnetAddressPrefix=10.0.0.0/24
+resourceGroup=VMTutorialResources
+
+az network vnet create \
+  --name $vnetName \
+  --resource-group $resourceGroup \
+  --address-prefixes $vnetAddressPrefix \
+  --subnet-name $subnetName \
+  --subnet-prefixes $subnetAddressPrefix
+
+
+# --- create a network interface for a specified subnet on a specified virtual network with a private 
+# --- IP-adress, before look if there is a public ip-adress, else create one
+
+# create Bash shell variables
+resourceGroup=VMTutorialResources
+vnetName=TutorialVNet1
+subnetName=TutorialSubnet1
+netInterfaceName=webvnic
+IPStatic=10.0.0.4
+pubIPAdress=webpublicip
+
+# Create a network interface for a specified subnet on a specified virtual network with a private IP-adress
+az network nic create -g $resourceGroup --vnet-name $vnetName --subnet $subnetName --private-ip-address $IPStatic -n $netInterfaceName --public-ip-address $pubIPAdress
+
+# --- Create a public IP Address with a DNS name label, keep in mind that sku Basic will be dismissed in 2025
+# create Bash shell variables
+resourceGroup=VMTutorialResources
+allocMethod=Dynamic
+dnsName=maen007
+ipName=webpublicip
+vers=IPv4
+SKU=Basic
+
+# Create a public IP Address with a DNS name label 
+az network public-ip create -g $resourceGroup -n $ipName --dns-name $dnsName --allocation-method $allocMethod --version $vers --sku $SKU
+
+# --- Create an NSG in a resource group
+# create Bash shell variables
+resourceGroup=VMTutorialResources
+nsgName=webnsg
+
+az network nsg create -g $resourceGroup -n $nsgName
+
+# --- Show all available rules of a certain nsg 
+# create Bash shell variables
+resourceGroup=VMTutorialResources
+nsgName=webnsg
+
+az network nsg rule list -g $resourceGroup --nsg-name $nsgName
+
+
+# ---- Create a rule for direction Inbound, protocol TCP, Port 8080, Destination All, priority 101, name TCP8080Marc, Source All, Source-Port All
+# create Bash shell variables
+destportRanges='80-88'  #bash awaits either a number or an araary, but az can't handle only 1 number or a range
+resourceGroup=VMTutorialResources
+nsgName=webnsg
+ruleName=TCP8080Marc
+prior=101
+access=Allow
+protocol=TCP
+dir=Inbound
+destinationAddressPrefix=*
+sourceAddressPrefix=*
+
+az network nsg rule create \
+  --resource-group $resourceGroup \
+  --nsg-name $nsgName \ 
+  --name $ruleName \ 
+  --priority $prior \
+  --access $access \
+  --protocol $protocol \
+  --direction $dir \
+  --destination-port-ranges $destportRanges
+  --destination-address-prefixes $destinationAddressPrefix \
+  --source-address-prefixes $sourceAddressPrefix 
+
+# --- Create an NSG in a resource group
+# create Bash shell variables
+resourceGroup=VMTutorialResources
+nsgName=remotensg
+
+az network nsg create -g $resourceGroup -n $nsgName
+
+# ---- Create a rule for direction Inbound, protocol TCP, Port 22 Destination All, priority 100, name allowssh, Source All, Source-Port All
+# create Bash shell variables
+
+resourceGroup=VMTutorialResources
+nsgName=remotensg
+ruleName=allowssh
+prior=100
+access=Allow
+protocol=TCP
+dir=Inbound  #Default: Inbound, Option Outbound
+destportRanges=22 #es können nur einzelne Zahlen oder Ranges wie '80-88' übergeben werden, Arrays und Classes werde von AZ network nicht verschafft
+destinationAddressPrefix=* # das * ist der Default und wird von AZ nicht geschluckt ...
+sourceAddressPrefix=* # das * ist der Default und wird von AZ nicht geschluckt ...
+
+az network nsg rule create \
+  --resource-group $resourceGroup \
+  --nsg-name $nsgName \
+  --name $ruleName \
+  --priority $prior \
+  --access $access \
+  --protocol $protocol \
+  --direction $dir \
+  --destination-port-ranges $destportRanges 
+  --destination-address-prefixes $destinationAddressPrefix \
+  --source-address-prefixes $sourceAddressPrefix
+
+# --- create a subnet for an existing virtual network, an existing nsg and an existing resourcegroup with location if not yet done
+# create Bash shell variables
+
+vnetName=TutorialVNet1
+subnetName=remotesubnet
+subnetAddressPrefix=10.0.2.0/24
+resourceGroup=VMTutorialResources
+nsgName=remotensg
+
+az network vnet subnet create \
+  --resource-group $resourceGroup \
+  --vnet-name $vnetName \
+  --name $subnetName \
+  --address-prefixes $subnetAddressPrefix \
+  --network-security-group $nsgName
+
+# -- create a VM 
+# create Bash shell variables
+resourceGroup=VMTutorialResources
+vmName=webvm
+OS=Ubuntu2204
+vmSize=Standard_B1ms
+admName=azuremol
+nicName=webvnic
+
+az vm create \
+  --resource-group $resourceGroup \
+  --name $vmName \
+  --image $OS \
+  --size $vmSize \ 
+  --nics $nicName \
+  --admin-username $admName \ 
+  --generate-ssh-keys 
+
+# --- create a network interface for a specified subnet on a specified virtual network with a private 
+# --- IP-adress, before look if there is a public ip-adress, else create one
+
+# create Bash shell variables
+resourceGroup=VMTutorialResources
+vnetName=TutorialVNet1
+subnetName=TutorialSubnet1
+netInterfaceName=webvnic
+IPStatic=10.0.0.4
+pubIPAdress=webpublicip
+
+# Create a network interface for a specified subnet on a specified virtual network with a private IP-adress
+az network nic create -g $resourceGroup --vnet-name $vnetName --subnet $subnetName --private-ip-address $IPStatic -n $netInterfaceName --public-ip-address $pubIPAdress
+
+# create Bash shell variables
+resourceGroup=VMTutorialResources
+allocMethod=Dynamic
+dnsName=maen007-1
+ipName=remotepublicip
+vers=IPv4
+SKU=Basic
+
+# Create a public IP Address with a DNS name label
+az network public-ip create -g $resourceGroup -n $ipName --dns-name $dnsName --allocation-method $allocMethod --version $vers --sku $SKU
+
+# create Bash shell variables
+resourceGroup=VMTutorialResources
+vnetName=TutorialVNet1 #Name of the virtual Network
+subnetName=remotesubnet #Name of the subnet
+netInterfaceName=remotenic #Name of the nic
+IPStatic=10.0.2.4 #individual IP for subnet
+pubIPAdress=remotepublicip #the public IP
+
+
+# Create a network interface for a specified subnet on a specified virtual network with a private IP-adress
+# missing --public-ip-address: <Name or ID of an existing public IP address.>
+az network nic create -g $resourceGroup --vnet-name $vnetName --subnet $subnetName --private-ip-address $IPStatic -n $netInterfaceName --public-ip-address $pubIPAdress
+
+
+# -- create another VM with some different settings like subnet, name, 
+# -- explicit virtual net name, explicit subnet name, explicit nsg name 
+# -- and explicit public-ip-adress bit without network interface card (nics)
+# -- You create a public IP address, such as remotepublicip, as part of this command,
+# -- Create a admin PWD while giving this like "Simbabwe01!!" 
+# -- Seems to be important taht public ip address comes last!!!
+
+# create Bash shell variables
+resourceGroup=VMTutorialResources
+vmName=remotevm
+vnetName=TutorialVNet1
+subnetName=remotesubnet
+nsgName=remotensg
+OS=Ubuntu2204
+vmSize=Standard_B1ms
+admName=azuremol
+nicName=webvnic
+publicipAdress=remotepublicip
+
+az vm create \
+  --resource-group $resourceGroup \
+  --name $vmName \
+  --vnet-name $vnetName \
+  --subnet $subnetName \
+  --nsg $nsgName
+  --image $OS \
+  --size $vmSize \ 
+  --admin-username $admName \ 
+  --generate-ssh-keys 
+  --public-ip-address $publicipAdress \
+
+
+# -- create a VM for remote
+# create Bash shell variables
+resourceGroup=VMTutorialResources
+vmName=remotevm
+OS=Ubuntu2204
+vmSize=Standard_B1ms
+admName=azuremol
+nicName=remotenic
+
+az vm create \
+  --resource-group $resourceGroup \
+  --name $vmName \
+  --image $OS \
+  --size $vmSize \ 
+  --nics $nicName \
+  --admin-username $admName \ 
+  --generate-ssh-keys 
+
+eval $(ssh-agent)
+ssh-add
+ssh -A azuremol@72.144.150.60
+
+ssh 10.0.0.4
+
+sudo apt update && sudo apt install -y lamp-server^
+
+# shows all tagged items
+az tag list -o table
+
+#show a list of all resources with tag ms-resource-usage
+az resource list --tag ms-resource-usage
+
+#shows the same list as above
+az resource list --tag 'ms-resource-usage'
+
+#show a list of all resource groups with tag labrador
+az group list --tag 'labrador'
+
+# doesn't work with wildcards
+az resource list --tag 'labr*'
+
+# instead of wildcards use queries:
+az group list \
+    --query "[?tags.mynewtutorial == 'fine']" -o table
+
+az group list \
+    --query "[?tags.mynewtutorial == 'old']" -o table
+
+az group list \
+    --query "[?tags.mynewtutorial != null]" -o table
+
+# give additonal tag to resource group with --set (--add is almost deprecated)
+az group update --resource-group lerne.azure --set tags.CostCenter='{"Dept":"IT","Environment":"Test"}'
+
+#give mulitple additonal tag to resource group with --set (--add is almost deprecated)
+az group update --resource-group lerne.azure --set tags.Dept="IT" tags.Envronment="Test"
+
+#--tags replaces all other keys and gives an empty key
+az group update --resource-group lerne.azure --tags mynewkey
+
+#--tags replaces exisiting tags with tag="value"
+az group update --resource-group lerne.azure --tags key2="whatever"
+
+#--tags replaces exisiting tags with multiple tag="value"
+az group update --resource-group lerne.azure --tags Team=Engineering Lifecycle=Production Event=Rollout
+
+
+
