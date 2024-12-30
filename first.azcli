@@ -2,6 +2,8 @@ az upgrade
 
 az login
 
+#whatever
+
 az account show
 
 az sshkey list 
